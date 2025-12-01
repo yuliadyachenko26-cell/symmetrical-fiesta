@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Tarot Reading • Full 78-Card Deck</title>
+    <meta name="description" content="Free interactive daily tarot reading with the complete Rider-Waite deck (78 cards, upright & reversed).">
+    <style>
+        body {
+            font-family: "Georgia", serif;
+            background: linear-gradient(135deg, #1a0f2e, #2d1b3d);
+            color: #f4e8c1;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            animation: glow 12s ease-in-out infinite alternate;
+        }
+        @keyframes glow {
+            from { background: linear-gradient(135deg, #1a0f2e, #2d1b3d); }
+            to   { background: linear-gradient(135deg, #2a1b4d, #3d2b5d); }
+        }
+        h1 {
+            color: #d4af37;
+            text-shadow: 0 0 15px #d4af37;
+            margin-bottom: 10px;
+        }
+        #card-container {
+            perspective: 1000px;
+            margin: 30px 0;
+        }
+        #card {
+            width: 180px;
+            height: 300px;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.9s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+            cursor: pointer;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.6);
+        }
+        #card.flipped { transform: rotateY(180deg); }
+        .face {
+            position: absolute;
+            width: 100%; height: 100%;
+            backface-visibility: hidden;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        #front {
+            background: linear-gradient(45deg, #8b4513, #d4af37);
+            writing-mode: vertical-rl;
+            font-size: 18px;
+            font-weight: bold;
+            color: #2c1810;
+        }
+        #back {
+            background-size: cover;
+            background-position: center;
+            transform: rotateY(180deg);
+        }
+        button {
+            background: #d4af37;
+            color: #2c1810;
+            border: none;
+            padding: 12px 24px;
+            margin: 8px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        button:hover { transform: scale(1.05); opacity: 0.9; }
+        #interpretation {
+            max-width: 600px;
+            text-align: center;
+            line-height: 1.7;
+            padding: 20px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 12px;
+            margin: 20px;
+        }
+        #journal, #entries {
+            max-width: 600px;
+            width: 100%;
+        }
+        textarea {
+            width: 100%;
+            height: 120px;
+            background: rgba(244,232,193,0.1);
+            border: 1px solid #d4af37;
+            color: #f4e8c1;
+            padding: 12px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .entry {
+            background: rgba(212,175,55,0.15);
+            padding: 12px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border-left: 4px solid #d4af37;
+        }
+        @media (max-width: 500px) {
+            #card { width: 140px; height: 233px; }
+            h1 { font-size: 1.6em; }
+        }
+    </style>
+</head>
+<body>
+    <h1>Full 78-Card Tarot Reading</h1>
+    <p>Click or press Enter to draw your card of the day</p>
+
+    <div id="card-container">
+        <div id="card">
+            <div id="front" class="face">Draw Your Card</div>
+            <div id="back" class="face"></div>
+        </div>
+    </div>
+
+    <button onclick="drawCard()">New Reading</button>
+
+    <div id="interpretation"></div>
+
+    <div id="journal">
+        <h3>Journal Your Reflection</h3>
+        <textarea id="note" placeholder="What does this card mean for you today?"></textarea>
+        <button onclick="saveEntry()">Save Entry</button>
+        <button onclick="toggleEntries()">View Past Readings</button>
+        <div id="entries"></div>
+    </div>
+
+    <script>
+        // FULL 78-CARD DECK
+        const deck = [
+            // Major Arcana (22 cards)
+            {name:"0 - The Fool", upright:"New beginnings, innocence, leap of faith", reversed:"Recklessness, holding back", img:"https://upload.wikimedia.org/wikipedia/commons/9/9b/RWS_Tarot_00_Fool.jpg"},
+            {name:"I - The Magician", upright:"Manifestation, skill, resourcefulness", reversed:"Manipulation, poor planning", img:"https://upload.wikimedia.org/wikipedia/commons/d/de/RWS_Tarot_01_Magician.jpg"},
+            {name:"II - The High Priestess", upright:"Intuition, mystery, subconscious", reversed:"Secrets, disconnected from intuition", img:"https://upload.wikimedia.org/wikipedia/commons/8/88/RWS_Tarot_02_High_Priestess.jpg"},
+            {name:"III - The Empress", upright:"Nurturing, abundance, creativity", reversed:"Dependence, smothering", img:"https://upload.wikimedia.org/wikipedia/commons/d/d2/RWS_Tarot_03_Empress.jpg"},
+            {name:"IV - The Emperor", upright:"Authority, structure, control", reversed:"Tyranny, rigidity", img:"https://upload.wikimedia.org/wikipedia/commons/c/c3/RWS_Tarot_04_Emperor.jpg"},
+            {name:"V - The Hierophant", upright:"Tradition, conformity, guidance", reversed:"Rebellion, unconventional", img:"https://upload.wikimedia.org/wikipedia/commons/4/4d/RWS_Tarot_05_Hierophant.jpg"},
+            {name:"VI - The Lovers", upright:"Love, harmony, choices", reversed:"Disharmony, imbalance", img:"https://upload.wikimedia.org/wikipedia/commons/3/3a/TheLovers.jpg"},
+            {name:"VII - The Chariot", upright:"Victory, willpower, direction", reversed:"Lack of control, aggression", img:"https://upload.wikimedia.org/wikipedia/commons/9/9b/RWS_Tarot_07_Chariot.jpg"},
+            {name:"VIII - Strength", upright:"Courage, inner strength, compassion", reversed:"Self-doubt, weakness", img:"https://upload.wikimedia.org/wikipedia/commons/f/f5/RWS_Tarot_08_Strength.jpg"},
+            {name:"IX - The Hermit", upright:"Soul-searching, introspection", reversed:"Isolation, loneliness", img:"https://upload.wikimedia.org/wikipedia/commons/4/4d/RWS_Tarot_09_Hermit.jpg"},
+            {name:"X - Wheel of Fortune", upright:"Cycles, fate, turning point", reversed:"Bad luck, resistance to change", img:"https://upload.wikimedia.org/wikipedia/commons/3/3c/RWS_Tarot_10_Wheel_of_Fortune.jpg"},
+            {name:"XI - Justice", upright:"Fairness, truth, law", reversed:"Dishonesty, imbalance", img:"https://upload.wikimedia.org/wikipedia/commons/e/e0/RWS_Tarot_11_Justice.jpg"},
+            {name:"XII - The Hanged Man", upright:"Surrender, new perspective", reversed:"Stagnation, resistance", img:"https://upload.wikimedia.org/wikipedia/commons/2/2b/RWS_Tarot_12_Hanged_Man.jpg"},
+            {name:"XIII - Death", upright:"Transformation, endings, rebirth", reversed:"Resistance to change", img:"https://upload.wikimedia.org/wikipedia/commons/d/d7/RWS_Tarot_13_Death.jpg"},
+            {name:"XIV - Temperance", upright:"Balance, moderation, harmony", reversed:"Imbalance, excess", img:"https://upload.wikimedia.org/wikipedia/commons/f/f8/RWS_Tarot_14_Temperance.jpg"},
+            {name:"XV - The Devil", upright:"Bondage, materialism, addiction", reversed:"Release, freedom", img:"https://upload.wikimedia.org/wikipedia/commons/5/55/RWS_Tarot_15_Devil.jpg"},
+            {name:"XVI - The Tower", upright:"Sudden upheaval, chaos", reversed:"Avoiding disaster, fear of change", img:"https://upload.wikimedia.org/wikipedia/commons/5/53/RWS_Tarot_16_Tower.jpg"},
+            {name:"XVII - The Star", upright:"Hope, inspiration, serenity", reversed:"Lack of faith, despair", img:"https://upload.wikimedia.org/wikipedia/commons/d/db/RWS_Tarot_17_Star.jpg"},
+            {name:"XVIII - The Moon", upright:"Illusion, intuition, uncertainty", reversed:"Clarity, truth revealed", img:"https://upload.wikimedia.org/wikipedia/commons/7/7f/RWS_Tarot_18_Moon.jpg"},
+            {name:"XIX - The Sun", upright:"Joy, success, vitality", reversed:"Temporary depression, lack of clarity", img:"https://upload.wikimedia.org/wikipedia/commons/1/17/RWS_Tarot_19_Sun.jpg"},
+            {name:"XX - Judgement", upright:"Rebirth, inner calling", reversed:"Self-doubt, refusal of call", img:"https://upload.wikimedia.org/wikipedia/commons/d/dd/RWS_Tarot_20_Judgement.jpg"},
+            {name:"XXI - The World", upright:"Completion, fulfillment, wholeness", reversed:"Incompletion, shortcuts", img:"https://upload.wikimedia.org/wikipedia/commons/f/ff/RWS_Tarot_21_World.jpg"},
+
+            // Wands (14 cards)
+            {name:"Ace of Wands", upright:"Inspiration, new opportunity", reversed:"Delays, lack of direction", img:"https://upload.wikimedia.org/wikipedia/commons/1/11/Wands01.jpg"},
+            {name:"Two of Wands", upright:"Planning, future vision", reversed:"Fear of change", img:"https://upload.wikimedia.org/wikipedia/commons/9/98/Wands02.jpg"},
+            {name:"Three of Wands", upright:"Expansion, foresight", reversed:"Obstacles, delays", img:"https://upload.wikimedia.org/wikipedia/commons/1/1d/Wands03.jpg"},
+            {name:"Four of Wands", upright:"Celebration, harmony", reversed:"Lack of support", img:"https://upload.wikimedia.org/wikipedia/commons/2/27/Wands04.jpg"},
+            {name:"Five of Wands", upright:"Competition, conflict", reversed:"Avoiding conflict", img:"https://upload.wikimedia.org/wikipedia/commons/9/9d/Wands05.jpg"},
+            {name:"Six of Wands", upright:"Victory, recognition", reversed:"Ego, lack of recognition", img:"https://upload.wikimedia.org/wikipedia/commons/3/3b/Wands06.jpg"},
+            {name:"Seven of Wands", upright:"Defense, perseverance", reversed:"Giving up", img:"https://upload.wikimedia.org/wikipedia/commons/9/92/Wands07.jpg"},
+            {name:"Eight of Wands", upright:"Speed, action, movement", reversed:"Delays, frustration", img:"https://upload.wikimedia.org/wikipedia/commons/6/6b/Wands08.jpg"},
+            {name:"Nine of Wands", upright:"Resilience, courage", reversed:"Exhaustion", img:"https://upload.wikimedia.org/wikipedia/commons/4/4b/Wands09.jpg"},
+            {name:"Ten of Wands", upright:"Burden, responsibility", reversed:"Releasing burdens", img:"https://upload.wikimedia.org/wikipedia/commons/0/0b/Wands10.jpg"},
+            {name:"Page of Wands", upright:"Enthusiasm, exploration", reversed:"Setbacks, bad news", img:"https://upload.wikimedia.org/wikipedia/commons/7/72/Wands11.jpg"},
+            {name:"Knight of Wands", upright:"Adventure, passion", reversed:"Haste, scattered energy", img:"https://upload.wikimedia.org/wikipedia/commons/1/16/Wands12.jpg"},
+            {name:"Queen of Wands", upright:"Confidence, warmth", reversed:"Jealousy, insecurity", img:"https://upload.wikimedia.org/wikipedia/commons/0/0e/Wands13.jpg"},
+            {name:"King of Wands", upright:"Leadership, vision", reversed:"Impulsiveness, ruthlessness", img:"https://upload.wikimedia.org/wikipedia/commons/9/96/Wands14.jpg"},
+
+            // Cups (14 cards)
+            {name:"Ace of Cups", upright:"Emotional beginning, compassion", reversed:"Blocked emotions", img:"https://upload.wikimedia.org/wikipedia/commons/3/36/Cups01.jpg"},
+            {name:"Two of Cups", upright:"Partnership, unity", reversed:"Disharmony", img:"https://upload.wikimedia.org/wikipedia/commons/9/9f/Cups02.jpg"},
+            {name:"Three of Cups", upright:"Friendship, community", reversed:"Overindulgence", img:"https://upload.wikimedia.org/wikipedia/commons/7/79/Cups03.jpg"},
+            {name:"Four of Cups", upright:"Contemplation, apathy", reversed:"Sudden awareness", img:"https://upload.wikimedia.org/wikipedia/commons/7/70/Cups04.jpg"},
+            {name:"Five of Cups", upright:"Loss, regret", reversed:"Acceptance", img:"https://upload.wikimedia.org/wikipedia/commons/3/3f/Cups05.jpg"},
+            {name:"Six of Cups", upright:"Nostalgia, innocence", reversed:"Stuck in past", img:"https://upload.wikimedia.org/wikipedia/commons/3/3d/Cups06.jpg"},
+            {name:"Seven of Cups", upright:"Choices, illusion", reversed:"Clarity", img:"https://upload.wikimedia.org/wikipedia/commons/7/7a/Cups07.jpg"},
+            {name:"Eight of Cups", upright:"Walking away, seeking truth", reversed:"Avoidance", img:"https://upload.wikimedia.org/wikipedia/commons/4/4e/Cups08.jpg"},
+            {name:"Nine of Cups", upright:"Satisfaction, wish fulfillment", reversed:"Smugness", img:"https://upload.wikimedia.org/wikipedia/commons/4/4c/Cups09.jpg"},
+            {name:"Ten of Cups", upright:"Happiness, family", reversed:"Broken home", img:"https://upload.wikimedia.org/wikipedia/commons/1/13/Cups10.jpg"},
+            {name:"Page of Cups", upright:"Creativity, intuition", reversed:"Emotional immaturity", img:"https://upload.wikimedia.org/wikipedia/commons/2/20/Cups11.jpg"},
+            {name:"Knight of Cups", upright:"Romance, imagination", reversed:"Moodiness", img:"https://upload.wikimedia.org/wikipedia/commons/0/0b/Cups12.jpg"},
+            {name:"Queen of Cups", upright:"Empathy, nurturing", reversed:"Emotional insecurity", img:"https://upload.wikimedia.org/wikipedia/commons/3/30/Cups13.jpg"},
+            {name:"King of Cups", upright:"Balance, compassion", reversed:"Emotional manipulation", img:"https://upload.wikimedia.org/wikipedia/commons/7/73/Cups14.jpg"},
+
+            // Pentacles (14 cards)
+            {name:"Ace of Pentacles", upright:"New financial opportunity", reversed:"Missed chance", img:"https://upload.wikimedia.org/wikipedia/commons/f/fd/Pents01.jpg"},
+            {name:"Two of Pentacles", upright:"Balance, adaptability", reversed:"Disorganization", img:"https://upload.wikimedia.org/wikipedia/commons/3/3f/Pents02.jpg"},
+            {name:"Three of Pentacles", upright:"Teamwork, skill", reversed:"Lack of teamwork", img:"https://upload.wikimedia.org/wikipedia/commons/3/3a/Pents03.jpg"},
+            {name:"Four of Pentacles", upright:"Stability, control", reversed:"Greed", img:"https://upload.wikimedia.org/wikipedia/commons/8/8a/Pents04.jpg"},
+            {name:"Five of Pentacles", upright:"Hardship, isolation", reversed:"Recovery", img:"https://upload.wikimedia.org/wikipedia/commons/5/53/Pents05.jpg"},
+            {name:"Six of Pentacles", upright:"Generosity, sharing", reversed:"Selfishness", img:"https://upload.wikimedia.org/wikipedia/commons/7/7c/Pents06.jpg"},
+            {name:"Seven of Pentacles", upright:"Assessment, patience", reversed:"Impatience", img:"https://upload.wikimedia.org/wikipedia/commons/7/7d/Pents07.jpg"},
+            {name:"Eight of Pentacles", upright:"Diligence, mastery", reversed:"Lack of focus", img:"https://upload.wikimedia.org/wikipedia/commons/2/20/Pents08.jpg"},
+            {name:"Nine of Pentacles", upright:"Abundance, self-sufficiency", reversed:"Overinvestment", img:"https://upload.wikimedia.org/wikipedia/commons/4/49/Pents09.jpg"},
+            {name:"Ten of Pentacles", upright:"Legacy, family", reversed:"Financial loss", img:"https://upload.wikimedia.org/wikipedia/commons/9/94/Pents10.jpg"},
+            {name:"Page of Pentacles", upright:"Ambition, practicality", reversed:"Lack of commitment", img:"https://upload.wikimedia.org/wikipedia/commons/0/0d/Pents11.jpg"},
+            {name:"Knight of Pentacles", upright:"Reliability, hard work", reversed:"Stagnation", img:"https://upload.wikimedia.org/wikipedia/commons/2/23/Pents12.jpg"},
+            {name:"Queen of Pentacles", upright:"Nurturing, practicality", reversed:"Financial insecurity", img:"https://upload.wikimedia.org/wikipedia/commons/5/5d/Pents13.jpg"},
+            {name:"King of Pentacles", upright:"Abundance, security", reversed:"Greed", img:"https://upload.wikimedia.org/wikipedia/commons/0/0a/Pents14.jpg"},
+
+            // Swords (14 cards)
+            {name:"Ace of Swords", upright:"Clarity, breakthrough", reversed:"Confusion", img:"https://upload.wikimedia.org/wikipedia/commons/3/34/Swords01.jpg"},
+            {name:"Two of Swords", upright:"Indecision, stalemate", reversed:"Clarity", img:"https://upload.wikimedia.org/wikipedia/commons/9/9c/Swords02.jpg"},
+            {name:"Three of Swords", upright:"Heartbreak, sorrow", reversed:"Recovery", img:"https://upload.wikimedia.org/wikipedia/commons/4/40/Swords03.jpg"},
+            {name:"Four of Swords", upright:"Rest, recuperation", reversed:"Restlessness", img:"https://upload.wikimedia.org/wikipedia/commons/7/74/Swords04.jpg"},
+            {name:"Five of Swords", upright:"Conflict, defeat", reversed:"Reconciliation", img:"https://upload.wikimedia.org/wikipedia/commons/6/6e/Swords05.jpg"},
+            {name:"Six of Swords", upright:"Transition, moving on", reversed:"Resistance to change", img:"https://upload.wikimedia.org/wikipedia/commons/1/10/Swords06.jpg"},
+            {name:"Seven of Swords", upright:"Deception, strategy", reversed:"Coming clean", img:"https://upload.wikimedia.org/wikipedia/commons/1/1b/Swords07.jpg"},
+            {name:"Eight of Swords", upright:"Restriction, self-limitation", reversed:"Self-liberation", img:"https://upload.wikimedia.org/wikipedia/commons/2/20/Swords08.jpg"},
+            {name:"Nine of Swords", upright:"Anxiety, despair", reversed:"Hope", img:"https://upload.wikimedia.org/wikipedia/commons/2/26/Swords09.jpg"},
+            {name:"Ten of Swords", upright:"Rock bottom, endings", reversed:"Recovery", img:"https://upload.wikimedia.org/wikipedia/commons/2/24/Swords10.jpg"},
+            {name:"Page of Swords", upright:"Curiosity, new ideas", reversed:"Gossip", img:"https://upload.wikimedia.org/wikipedia/commons/7/7c/Swords11.jpg"},
+            {name:"Knight of Swords", upright:"Action, ambition", reversed:"Recklessness", img:"https://upload.wikimedia.org/wikipedia/commons/2/2d/Swords12.jpg"},
+            {name:"Queen of Swords", upright:"Independence, clear judgment", reversed:"Bitterness", img:"https://upload.wikimedia.org/wikipedia/commons/5/53/Swords13.jpg"},
+            {name:"King of Swords", upright:"Intellect, authority", reversed:"Abuse of power", img:"https://upload.wikimedia.org/wikipedia/commons/2/2b/Swords14.jpg"}
+        ];
+
+        let currentCard = null;
+        let orientation = "upright";
+
+        function drawCard() {
+            currentCard = deck[Math.floor(Math.random() * deck.length)];
+            orientation = Math.random() < 0.5 ? "reversed" : "upright";
+            document.getElementById("card").classList.remove("flipped");
+            document.getElementById("interpretation").innerHTML = "<p>Flipping your card...</p>";
+            document.getElementById("back").style.backgroundImage = "none";
+
+            const img = new Image();
+            img.onload = () => {
+                setTimeout(() => {
+                    document.getElementById("back").style.backgroundImage = `url(${currentCard.img})`;
+                    document.getElementById("card").classList.add("flipped");
+                    showMeaning();
+                }, 300);
+            };
+            img.onerror = () => {
+                document.getElementById("back").style.backgroundImage = "linear-gradient(45deg, #8b4513, #d4af37)";
+            };
+            img.src = currentCard.img;
+        }
+
+        function showMeaning() {
+            const meaning = orientation === "reversed" ? currentCard.reversed : currentCard.upright;
+            document.getElementById("interpretation").innerHTML = `
+                <h2>${currentCard.name} <em>(${orientation})</em></h2>
+                <p><strong>${meaning}</strong></p>
+                <p><small>Share this reading: <a href="?c=${encodeURIComponent(currentCard.name)}&o=${orientation}" style="color:#d4af37">Copy link</a></small></p>
+            `;
+        }
+
+        function saveEntry() {
+            if (!currentCard) return alert("Draw a card first!");
+            const note = document.getElementById("note").value.trim();
+            const entries = JSON.parse(localStorage.getItem("tarotJournal") || "[]");
+            entries.push({
+                date: new Date().toLocaleDateString(),
+                card: currentCard.name,
+                orientation,
+                meaning: orientation === "reversed" ? currentCard.reversed : currentCard.upright,
+                note
+            });
+            localStorage.setItem("tarotJournal", JSON.stringify(entries));
+            document.getElementById("note").value = "";
+            alert("Saved to your journal!");
+        }
+
+        function toggleEntries() {
+            const entries = JSON.parse(localStorage.getItem("tarotJournal") || "[]");
+            const div = document.getElementById("entries");
+            if (entries.length === 0) {
+                div.innerHTML = "<p>No entries yet. Start reflecting!</p>";
+                return;
+            }
+            div.innerHTML = "<h3>Past Readings</h3>" + entries.reverse().map(e => `
+                <div class="entry">
+                    <strong>${e.date} • ${e.card} (${e.orientation})</strong><br>
+                    ${e.meaning}<br>
+                    ${e.note ? "<em>\\"" + e.note + "\\"</em>" : ""}
+                </div>
+            `).join("");
+        }
+
+        // Keyboard support
+        document.addEventListener("keydown", e => e.key === "Enter" && drawCard());
+
+        // Share link support
+        const params = new URLSearchParams(location.search);
+        if (params.has("c")) {
+            setTimeout(drawCard, 800);
+        }
+    </script>
+</body>
+</html>
