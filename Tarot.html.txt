@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Tarot Reading - Enhanced Interactive Edition</title>
+    <style>
+        body {
+            font-family: 'Georgia', serif;
+            background: linear-gradient(135deg, #2c1810, #4a2c1a);
+            color: #f4e8c1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            animation: subtleGlow 10s ease-in-out infinite alternate;
+        }
+        @keyframes subtleGlow {
+            0% { background: linear-gradient(135deg, #2c1810, #4a2c1a); }
+            100% { background: linear-gradient(135deg, #3a2214, #5a3c2a); }
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #d4af37;
+            text-shadow: 0 0 10px #d4af37;
+        }
+        #card-container {
+            perspective: 1000px;
+            margin: 20px 0;
+        }
+        #card {
+            width: 150px;
+            height: 250px;
+            background: #f4e8c1;
+            border-radius: 10px;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.8s;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        #card.flipped {
+            transform: rotateY(180deg);
+        }
+        #card .front, #card .back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+        }
+        #card .front {
+            background: linear-gradient(45deg, #d4af37, #b8860b);
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            font-size: 12px;
+            text-align: center;
+            padding: 10px;
+        }
+        #card .back {
+            background-size: cover;
+            background-position: center;
+        }
+        #draw-button {
+            background: #d4af37;
+            color: #2c1810;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px;
+        }
+        #draw-button:hover { opacity: 0.8; }
+        #interpretation {
+            max-width: 400px;
+            text-align: center;
+            margin: 20px 0;
+            line-height: 1.6;
+        }
+        #journal {
+            max-width: 400px;
+            margin: 20px 0;
+        }
+        #journal textarea {
+            width: 100%;
+            height: 100px;
+            background: rgba(244, 232, 193, 0.1);
+            border: 1px solid #d4af37;
+            color: #f4e8c1;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        #save-button, #view-entries {
+            background: #8b4513;
+            color: #f4e8c1;
+            border: none;
+            padding: 5px 10px;
+            margin: 5px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        #entries {
+            max-width: 400px;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+        @media (max-width: 600px) {
+            #card { width: 120px; height: 200px; }
+            h1 { font-size: 1.5em; }
+        }
+    </style>
+</head>
+<body>
+    <h1>🌟 Daily Tarot Reading 🌟</h1>
+    <div id="card-container">
+        <div id="card">
+            <div class="front">Draw Your Card</div>
+            <div class="back" id="card-image"></div>
+        </div>
+    </div>
+    <button id="draw-button" onclick="drawCard()">Draw Card</button>
+    <button id="draw-button" style="display:none;" id="flip-button" onclick="flipCard()">Flip to Reveal</button>
+    <div id="interpretation"></div>
+    <div id="journal">
+        <h3>Reflection Journal</h3>
+        <textarea id="reflection-text" placeholder="How does this reading resonate with you today?"></textarea>
+        <button id="save-button" onclick="saveReflection()">Save Reflection</button>
+        <button id="view-entries" onclick="viewEntries()">View Past Entries</button>
+        <div id="entries"></div>
+    </div>
+
+    <script>
+        // Tarot data: Simplified major arcana for demo (expandable to full 78)
+        const tarotCards = [
+            { name: "The Fool", upright: "Embrace new beginnings with optimism and trust in the universe.", reversed: "Pause and reconsider risks; avoid recklessness.", image: "https://upload.wikimedia.org/wikipedia/commons/9/9b/RWS_Tarot_00_Fool.jpg" },
+            { name: "The Magician", upright: "Harness your skills and manifest your desires with focus.", reversed: "Potential blocked; redirect energy to avoid manipulation.", image: "https://upload.wikimedia.org/wikipedia/commons/d/de/RWS_Tarot_01_Magician.jpg" },
+            { name: "The High Priestess", upright: "Trust your intuition; secrets and mysteries unfold.", reversed: "Ignore inner voice at your peril; seek clarity.", image: "https://upload.wikimedia.org/wikipedia/commons/8/88/RWS_Tarot_02_High_Priestess.jpg" },
+            // Add more cards as needed...
+        ];
+
+        let currentCard = null;
+        let isFlipped = false;
+        let orientation = 'upright'; // Randomize: Math.random() > 0.5 ? 'reversed' : 'upright';
+
+        function drawCard() {
+            currentCard = tarotCards[Math.floor(Math.random() * tarotCards.length)];
+            orientation = Math.random() > 0.5 ? 'reversed' : 'upright';
+            document.getElementById('flip-button').style.display = 'inline';
+            document.getElementById('draw-button').style.display = 'none';
+            isFlipped = false;
+            document.getElementById('card').classList.remove('flipped');
+            document.getElementById('interpretation').innerHTML = '';
+            // Preload image with error handling
+            const img = new Image();
+            img.onload = () => {
+                document.getElementById('card-image').style.backgroundImage = `url(${currentCard.image})`;
+            };
+            img.onerror = () => {
+                document.getElementById('card-image').style.backgroundImage = 'linear-gradient(45deg, #8b4513, #d4af37)';
+                console.log('Image load failed; using fallback.');
+            };
+            img.src = currentCard.image;
+        }
+
+        function flipCard() {
+            if (!isFlipped) {
+                document.getElementById('card').classList.add('flipped');
+                isFlipped = true;
+                const meaning = orientation === 'reversed' ? currentCard.reversed : currentCard.upright;
+                document.getElementById('interpretation').innerHTML = `
+                    <h3>${currentCard.name} (${orientation})</h3>
+                    <p>${meaning}</p>
+                    <small>Share: <a href="?card=${encodeURIComponent(currentCard.name)}" target="_blank">Link to this reading</a></small>
+                `;
+                // Load shared card if URL param exists
+                const urlParams = new URLSearchParams(window.location.search);
+                if (urlParams.has('card')) {
+                    // Auto-load shared card logic here if needed
+                }
+            }
+        }
+
+        function saveReflection() {
+            const text = document.getElementById('reflection-text').value.trim();
+            if (!text || !currentCard) return;
+            let entries = JSON.parse(localStorage.getItem('tarotEntries') || '[]');
+            entries.push({
+                date: new Date().toISOString().split('T')[0],
+                card: currentCard.name,
+                orientation: orientation,
+                reflection: text
+            });
+            localStorage.setItem('tarotEntries', JSON.stringify(entries));
+            document.getElementById('reflection-text').value = '';
+            alert('Reflection saved! ✨');
+        }
+
+        function viewEntries() {
+            const entries = JSON.parse(localStorage.getItem('tarotEntries') || '[]');
+            const div = document.getElementById('entries');
+            if (entries.length === 0) {
+                div.innerHTML = '<p>No entries yet. Start journaling!</p>';
+            } else {
+                div.innerHTML = entries.map(e => `
+                    <div style="border: 1px solid #d4af37; padding: 10px; margin: 5px 0; border-radius: 5px;">
+                        <strong>${e.date} - ${e.card} (${e.orientation})</strong><br>
+                        ${e.reflection}
+                    </div>
+                `).join('');
+            }
+        }
+
+        // Keyboard support
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !isFlipped) flipCard();
+        });
+
+        // Init: Draw on load if shared
+        window.onload = () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('card')) {
+                // Simulate draw for shared card
+                drawCard();
+                setTimeout(flipCard, 500);
+            }
+        };
+    </script>
+</body>
+</html>
